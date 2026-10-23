@@ -21,3 +21,8 @@ Thumbs.db
 
 # 本地配置覆盖
 config.local.json
+
+# 卡密台账（含有效卡密，绝不能提交）
+keys.csv
+*.keys.txt
+
