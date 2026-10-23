@@ -1,0 +1,33 @@
+{
+  "port": 9527,
+  "chrome": "",
+  "headless": false,
+  "windowWidth": 1280,
+  "windowHeight": 860,
+  "dataDir": "data",
+  "autoOpenConsole": true,
+  "license": {
+    "enabled": false,
+    "secret": "change-me-please-32bytes-secret-key"
+  },
+  "task": {
+    "concurrency": 1,
+    "minDelayMs": 1500,
+    "maxDelayMs": 4000,
+    "retry": 1,
+    "scrollTimes": 6,
+    "scrollDelayMs": 1200
+  },
+  "notify": {
+    "feishu": "",
+    "dingtalk": "",
+    "wechat": ""
+  },
+  "proxy": {
+    "enabled": false,
+    "list": []
+  },
+  "sign": {
+    "server": ""
+  }
+}

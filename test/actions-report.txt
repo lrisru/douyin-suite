@@ -1,0 +1,14 @@
+﻿PASS like 首次 sel=div[data-e2e="video-player-digg"] state=is-digged
+PASS like 重复跳过 已经是点赞状态
+PASS collect 首次 sel=[data-e2e="video-player-collect"]
+PASS collect 重复跳过 
+PASS follow 首次 state=已关注
+PASS follow 重复跳过 已关注
+PASS comment 发送 ["comment:fixture 评论内容"]
+PASS dm 发送 ["dm:fixture 私信内容"]
+PASS SEL.digg 命中第二候选 div[data-e2e="video-player-digg"]
+PASS SEL.collect 命中第三候选 [data-e2e="video-player-collect"]
+PASS SEL.followBtn 命中第一候选 
+PASS 未命中的返回空串 
+
+12 pass, 0 fail

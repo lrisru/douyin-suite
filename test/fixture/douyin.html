@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>抖音 DOM fixture</title>
+<style>
+  body { font-family: sans-serif; background: #111; color: #eee; padding: 20px; }
+  .box { border: 1px solid #444; padding: 10px; margin: 8px 0; }
+  [data-e2e="video-player-digg"], [data-e2e="video-player-collect"], #comment-icon, button, span.e2e-send-msg-btn {
+    cursor: pointer; display: inline-block; padding: 6px 10px; border: 1px solid #666; border-radius: 6px; margin: 4px;
+  }
+  [data-e2e-state="is-digged"] { background: #c2185b; }
+  [data-e2e-state="is-collected"] { background: #f9a825; color: #000; }
+  #msg-panel { display: none; }
+  #msg-panel.open { display: block; }
+  [contenteditable="true"] { min-height: 28px; border: 1px dashed #777; padding: 4px; margin: 4px; }
+</style>
+</head>
+<body>
+<!-- 点赞：只保留第二候选（没有 feed-active-video 包裹），验证选择器回退 -->
+<div class="box">
+  <div id="digg" data-e2e="video-player-digg" data-e2e-state="is-not-digged">点赞</div>
+  <!-- 收藏：用 span 标签，只有第三候选 [data-e2e="video-player-collect"] 能命中 -->
+  <span id="collect" data-e2e="video-player-collect" data-e2e-state="is-not-collected">收藏</span>
+</div>
+
+<!-- 关注 -->
+<div class="box">
+  <button id="follow" data-e2e="user-info-follow-btn">关注</button>
+  <button id="dm-entry" data-e2e="user-info-dm-btn">私信</button>
+</div>
+
+<!-- 评论 -->
+<div class="box" id="comment-box">
+  <div id="comment-icon" data-e2e="feed-comment-icon">评论</div>
+  <div class="comment-input-container">
+    <div class="comment-input-inner-container">
+      <div contenteditable="true" id="comment-editor"></div>
+      <button id="comment-send">发送</button>
+    </div>
+  </div>
+</div>
+
+<!-- 私信面板 -->
+<div class="box" id="msg-panel">
+  <div data-e2e="msg-input">
+    <div contenteditable="true" id="msg-editor"></div>
+  </div>
+  <span class="e2e-send-msg-btn" id="msg-send">发送</span>
+</div>
+
+<script>
+  window.__sent = [];
+  // 用 localStorage 模拟「服务端已保存的状态」：页面重新加载后状态仍在，
+  // 这样才能验证「已点赞/已收藏/已关注 时跳过」的判断。
+  const S = JSON.parse(localStorage.getItem('dyState') || '{}');
+  const save = () => localStorage.setItem('dyState', JSON.stringify(S));
+
+  const digg = document.getElementById('digg');
+  if (S.digg) { digg.dataset.e2eState = 'is-digged'; digg.textContent = '已点赞'; }
+  digg.addEventListener('click', () => {
+    const on = digg.dataset.e2eState === 'is-digged';
+    digg.dataset.e2eState = on ? 'is-not-digged' : 'is-digged';
+    digg.textContent = on ? '点赞' : '已点赞';
+    S.digg = !on; save();
+  });
+
+  const collect = document.getElementById('collect');
+  if (S.collect) { collect.dataset.e2eState = 'is-collected'; collect.textContent = '已收藏'; }
+  collect.addEventListener('click', () => {
+    const on = collect.dataset.e2eState === 'is-collected';
+    collect.dataset.e2eState = on ? 'is-not-collected' : 'is-collected';
+    collect.textContent = on ? '收藏' : '已收藏';
+    S.collect = !on; save();
+  });
+
+  const follow = document.getElementById('follow');
+  if (S.follow) follow.textContent = '已关注';
+  follow.addEventListener('click', () => {
+    const on = /已关注/.test(follow.textContent);
+    follow.textContent = on ? '关注' : '已关注';
+    S.follow = !on; save();
+  });
+
+  document.getElementById('dm-entry').addEventListener('click', () => {
+    document.getElementById('msg-panel').classList.add('open');
+  });
+
+  document.getElementById('comment-send').addEventListener('click', () => {
+    const ed = document.getElementById('comment-editor');
+    const text = (ed.innerText || '').trim();
+    if (text) window.__sent.push('comment:' + text);
+    ed.innerText = '';
+  });
+
+  document.getElementById('msg-send').addEventListener('click', () => {
+    const ed = document.getElementById('msg-editor');
+    const text = (ed.innerText || '').trim();
+    if (text) window.__sent.push('dm:' + text);
+    ed.innerText = '';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "douyin-suite",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "抖音综合工具（自建版）：多开指纹隔离 + 采集 + 互动任务 + 导出 + 通知",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "keygen": "node tools/genkey.mjs"
+  }
+}

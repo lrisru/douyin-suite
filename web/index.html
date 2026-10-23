@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>抖音综合工具 · 控制台</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="dot" id="live-dot"></span>
+    <strong>抖音综合工具</strong>
+    <span class="sub">自建版 · CDP 多开</span>
+  </div>
+  <div class="stats" id="stats">
+    <span>账号 <b id="s-accounts">0</b></span>
+    <span>在线 <b id="s-online">0</b></span>
+    <span>作品 <b id="s-items">0</b></span>
+    <span>用户 <b id="s-users">0</b></span>
+    <span>队列 <b id="s-queue">0</b></span>
+    <span class="lic" id="s-license">授权：未启用</span>
+  </div>
+</header>
+
+<nav id="tabs">
+  <button data-tab="dash" class="active">概览</button>
+  <button data-tab="accounts">账号</button>
+  <button data-tab="collect">采集</button>
+  <button data-tab="action">互动</button>
+  <button data-tab="live">直播</button>
+  <button data-tab="schedules">定时</button>
+  <button data-tab="data">数据</button>
+  <button data-tab="proxy">代理</button>
+  <button data-tab="settings">设置</button>
+  <button data-tab="logs">日志</button>
+</nav>
+
+<main>
+  <!-- 概览 -->
+  <section class="panel active" id="panel-dash">
+    <div class="cards">
+      <div class="card"><h3>开始使用</h3>
+        <ol class="steps">
+          <li>「账号」→ 新增账号 → 点「打开登录」扫码</li>
+          <li>点「检查登录」确认在线</li>
+          <li>「采集」填关键词跑任务</li>
+          <li>「数据」看结果并导出 Excel</li>
+        </ol>
+      </div>
+      <div class="card"><h3>运行状态</h3>
+        <div class="kv" id="dash-status">加载中…</div>
+      </div>
+      <div class="card"><h3>快捷动作</h3>
+        <div class="row">
+          <button class="btn" onclick="App.checkAllAccounts()">全部检查登录</button>
+          <button class="btn" onclick="App.reloadAll()">刷新数据</button>
+          <button class="btn ghost" onclick="App.openDataDir()">打开数据目录</button>
+        </div>
+      </div>
+    </div>
+    <h3 class="h3">最近任务</h3>
+    <div class="table-wrap"><table id="dash-tasks"><thead><tr>
+      <th>#</th><th>类型</th><th>状态</th><th>成功</th><th>失败</th><th>创建时间</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 账号 -->
+  <section class="panel" id="panel-accounts">
+    <div class="row">
+      <input id="acc-name" placeholder="账号名称（例如：主号）" />
+      <input id="acc-note" placeholder="备注（可空）" />
+      <button class="btn" onclick="App.addAccount()">新增账号</button>
+      <button class="btn ghost" onclick="App.reloadAccounts()">刷新</button>
+    </div>
+    <div class="row">
+      <textarea id="cookie-text" rows="3" placeholder="也可以直接粘贴 Cookie：sessionid=xxx; sessionid_ss=xxx; ..."></textarea>
+      <select id="cookie-acc"></select>
+      <button class="btn" onclick="App.importCookie()">导入 Cookie</button>
+    </div>
+    <div class="table-wrap"><table id="tbl-accounts"><thead><tr>
+      <th>#</th><th>名称</th><th>状态</th><th>登录</th><th>昵称</th><th>调试端口</th><th>操作</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 采集 -->
+  <section class="panel" id="panel-collect">
+    <div class="grid2">
+      <div class="card">
+        <h3>关键词搜索</h3>
+        <div class="row"><input id="kw" placeholder="关键词" /></div>
+        <div class="row">
+          <select id="kw-type">
+            <option value="video">视频</option>
+            <option value="user">用户</option>
+          </select>
+          <input id="kw-limit" type="number" value="50" min="1" />
+          <select id="kw-acc"></select>
+          <button class="btn" onclick="App.runSearch()">开始采集</button>
+        </div>
+        <p class="hint">会打开抖音搜索页、滚动加载并抓取接口返回。</p>
+      </div>
+      <div class="card">
+        <h3>用户主页</h3>
+        <div class="row"><input id="u-secuid" placeholder="sec_uid（MS4wLjAB…）" /></div>
+        <div class="row">
+          <input id="u-limit" type="number" value="50" min="1" />
+          <select id="u-acc"></select>
+          <button class="btn" onclick="App.runUserWorks()">采集作品</button>
+          <button class="btn ghost" onclick="App.runUserProfile()">只抓资料</button>
+        </div>
+        <p class="hint">从用户主页链接 /user/&lt;sec_uid&gt; 里取。</p>
+      </div>
+      <div class="card">
+        <h3>评论采集</h3>
+        <div class="row"><input id="c-aweme" placeholder="作品 ID 或 多个（逗号分隔）" /></div>
+        <div class="row">
+          <input id="c-limit" type="number" value="100" min="1" />
+          <select id="c-acc"></select>
+          <button class="btn" onclick="App.runComments()">采集评论</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>直播间</h3>
+        <div class="row"><input id="l-rid" placeholder="直播间号 / web_rid" /></div>
+        <div class="row">
+          <select id="l-acc"></select>
+          <button class="btn" onclick="App.runLive()">抓直播信息</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>粉丝 / 关注列表</h3>
+        <div class="row"><input id="rel-secuid" placeholder="sec_uid" /></div>
+        <div class="row">
+          <select id="rel-kind">
+            <option value="followers">粉丝</option>
+            <option value="following">关注</option>
+          </select>
+          <input id="rel-limit" type="number" value="200" min="1" />
+          <select id="rel-acc"></select>
+          <button class="btn" onclick="App.runRelation()">采集</button>
+        </div>
+        <p class="hint">会打开用户主页对应 tab 并滚动加载。</p>
+      </div>
+      <div class="card">
+        <h3>私信会话列表</h3>
+        <div class="row">
+          <input id="conv-limit" type="number" value="50" min="1" />
+          <select id="conv-acc"></select>
+          <button class="btn" onclick="App.runConversations()">拉取会话</button>
+        </div>
+        <p class="hint">抓当前账号的消息列表（对方昵称、最后一条、未读数）。</p>
+      </div>
+      <div class="card">
+        <h3>批量下载</h3>
+        <div class="row"><textarea id="dl-urls" rows="3" placeholder="分享链接 / 直达链接，每行一个"></textarea></div>
+        <div class="row">
+          <select id="dl-acc"></select>
+          <button class="btn" onclick="App.runDownload()">解析并下载</button>
+        </div>
+        <p class="hint">保存到 data/downloads/日期/，视频、图集、音乐一起抓。</p>
+      </div>
+      <div class="card">
+        <h3>直播搜索</h3>
+        <div class="row"><input id="live-kw" placeholder="关键词，如：美食" /></div>
+        <div class="row">
+          <input id="live-limit" type="number" value="50" min="1" />
+          <select id="live-acc"></select>
+          <button class="btn" onclick="App.runLiveSearch()">搜索直播间</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>分享链接解析（去水印）</h3>
+        <div class="row"><textarea id="parse-url" rows="3" placeholder="粘贴抖音分享文案或链接"></textarea></div>
+        <div class="row">
+          <button class="btn" onclick="App.parseShare()">解析</button>
+          <button class="btn" id="parse-dl" style="display:none" onclick="App.downloadParsed()">下载这个作品</button>
+          <button class="btn ghost" onclick="App.openDownloads()">打开下载文件夹</button>
+        </div>
+        <pre id="parse-out" class="out"></pre>
+      </div>
+      <div class="card">
+        <h3>任务列表</h3>
+        <div class="table-wrap"><table id="tbl-tasks"><thead><tr>
+          <th>#</th><th>类型</th><th>状态</th><th>成功</th><th>失败</th><th>操作</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 互动 -->
+  <section class="panel" id="panel-action">
+    <div class="grid2">
+      <div class="card">
+        <h3>点赞 / 收藏 / 关注</h3>
+        <div class="row">
+          <select id="a-type">
+            <option value="like">点赞</option>
+            <option value="collect">收藏</option>
+            <option value="follow">关注</option>
+          </select>
+          <select id="a-acc"></select>
+        </div>
+        <div class="row"><textarea id="a-ids" rows="3" placeholder="作品 ID（点赞/收藏）或 sec_uid（关注），每行一个或用逗号分隔"></textarea></div>
+        <div class="row"><button class="btn" onclick="App.runAction()">开始执行</button></div>
+        <p class="hint">每条之间会按设置里的随机延时执行，降低风控概率。</p>
+      </div>
+      <div class="card">
+        <h3>评论 / 私信</h3>
+        <div class="row">
+          <select id="m-type">
+            <option value="comment">评论</option>
+            <option value="dm">私信</option>
+          </select>
+          <select id="m-acc"></select>
+        </div>
+        <div class="row"><textarea id="m-ids" rows="2" placeholder="作品 ID（评论）或 sec_uid（私信），每行一个"></textarea></div>
+        <div class="row"><textarea id="m-text" rows="2" placeholder="话术，多条用 | 分隔，随机取一条"></textarea></div>
+        <div class="row"><button class="btn" onclick="App.runMessage()">开始执行</button></div>
+        <p class="hint">发送前请确认账号有相应权限（私信可能受限）。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 直播弹幕 -->
+  <section class="panel" id="panel-live">
+    <div class="row">
+      <input id="lv-rid" placeholder="直播间号 / web_rid" />
+      <select id="lv-acc"></select>
+      <button class="btn" onclick="App.startLive()">开始监听</button>
+      <button class="btn ghost" onclick="App.stopLive()">停止</button>
+      <button class="btn ghost" onclick="App.clearLiveView()">清屏</button>
+    </div>
+    <div class="row">
+      <select id="lv-filter" onchange="App.filterLive()">
+        <option value="">全部消息</option>
+        <option value="chat">弹幕</option>
+        <option value="gift">礼物</option>
+        <option value="member">进场</option>
+        <option value="like">点赞</option>
+      </select>
+      <span class="hint" id="lv-stats"></span>
+    </div>
+    <div class="grid3">
+      <div class="card"><h3>实时流</h3><div id="live-view" class="livebox"></div></div>
+      <div class="card"><h3>已入库</h3><div class="table-wrap"><table id="tbl-live"><thead><tr>
+        <th>时间</th><th>类型</th><th>用户</th><th>内容</th>
+      </tr></thead><tbody></tbody></table></div></div>
+    </div>
+  </section>
+
+  <!-- 定时任务 -->
+  <section class="panel" id="panel-schedules">
+    <div class="card">
+      <h3>新建定时任务</h3>
+      <div class="row">
+        <input id="sc-name" placeholder="名称，如：每天早上搜美食" />
+        <select id="sc-type">
+          <option value="search_video">关键词搜视频</option>
+          <option value="search_user">关键词搜用户</option>
+          <option value="search_live">关键词搜直播</option>
+          <option value="user_works">用户作品</option>
+          <option value="comments">评论采集</option>
+          <option value="followers">粉丝列表</option>
+          <option value="following">关注列表</option>
+          <option value="conversations">私信会话</option>
+          <option value="live_stream">直播弹幕监听</option>
+        </select>
+        <input id="sc-interval" type="number" value="60" min="1" placeholder="间隔分钟" />
+      </div>
+      <div class="row">
+        <input id="sc-params" placeholder='参数 JSON，例如 {"keyword":"美食","limit":50}' style="flex:1" />
+      </div>
+      <div class="row">
+        <input id="sc-accounts" placeholder="账号 ID，逗号分隔（可空=在线账号轮转）" />
+        <button class="btn" onclick="App.addSchedule()">创建</button>
+        <button class="btn ghost" onclick="App.loadSchedules()">刷新</button>
+      </div>
+      <p class="hint">间隔单位分钟；到点自动入队。多账号填 ID 列表后任务内会轮换执行。</p>
+    </div>
+    <div class="table-wrap"><table id="tbl-schedules"><thead><tr>
+      <th>#</th><th>名称</th><th>类型</th><th>间隔</th><th>状态</th><th>上次</th><th>下次</th><th>操作</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 数据 -->
+  <section class="panel" id="panel-data">
+    <div class="row">
+      <select id="d-kind">
+        <option value="items">作品</option>
+        <option value="users">用户</option>
+        <option value="comments">评论</option>
+        <option value="lives">直播</option>
+        <option value="conversations">私信会话</option>
+      </select>
+      <input id="d-kw" placeholder="全文检索关键词" />
+      <input id="d-task" type="number" placeholder="任务ID" style="min-width:100px" />
+      <input id="d-from" type="date" />
+      <input id="d-to" type="date" />
+      <button class="btn" onclick="App.loadData(0)">查询</button>
+      <button class="btn ghost" onclick="App.exportData('xlsx')">导出 Excel</button>
+      <button class="btn ghost" onclick="App.exportData('csv')">导出 CSV</button>
+      <button class="btn" onclick="App.dmSelected()">私信选中用户</button>
+      <button class="btn ghost" onclick="App.copySelected()">复制选中 sec_uid</button>
+      <span class="grow"></span>
+      <span id="d-count" class="hint"></span>
+      <button class="btn ghost" onclick="App.pageData(-1)">上一页</button>
+      <button class="btn ghost" onclick="App.pageData(1)">下一页</button>
+    </div>
+    <div class="table-wrap tall"><table id="tbl-data"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 代理 -->
+  <section class="panel" id="panel-proxy">
+    <div class="row">
+      <textarea id="proxy-input" rows="3" placeholder="每行一个：http://user:pass@host:port 或 host:port"></textarea>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="App.addProxy()">添加</button>
+      <button class="btn ghost" onclick="App.checkAllProxy()">全部检测</button>
+      <button class="btn ghost" onclick="App.reloadProxies()">刷新</button>
+    </div>
+    <div class="table-wrap"><table id="tbl-proxy"><thead><tr>
+      <th>#</th><th>地址</th><th>状态</th><th>延迟(ms)</th><th>出口 IP</th><th>操作</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 设置 -->
+  <section class="panel" id="panel-settings">
+    <div class="grid2">
+      <div class="card">
+        <h3>运行参数</h3>
+        <label>并发任务数 <input id="s-conc" type="number" min="1" max="8" /></label>
+        <label>最小延时(ms) <input id="s-delay1" type="number" min="300" /></label>
+        <label>最大延时(ms) <input id="s-delay2" type="number" min="500" /></label>
+        <label>每任务滚动次数 <input id="s-scroll" type="number" min="1" max="30" /></label>
+        <label class="chk"><input id="s-headless" type="checkbox" /> 无头模式（后台跑，不弹窗）</label>
+        <label>Chrome 路径 <input id="s-chrome" placeholder="留空自动探测" /></label>
+        <div class="row"><button class="btn" onclick="App.saveSettings()">保存</button></div>
+      </div>
+      <div class="card">
+        <h3>通知 Webhook</h3>
+        <label>飞书 <input id="s-feishu" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." /></label>
+        <label>钉钉 <input id="s-dingtalk" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." /></label>
+        <label>企业微信 <input id="s-wechat" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." /></label>
+        <div class="row">
+          <button class="btn" onclick="App.saveSettings()">保存</button>
+          <button class="btn ghost" onclick="App.testNotify()">发测试消息</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>授权</h3>
+        <div class="kv" id="lic-box">加载中…</div>
+        <div class="row">
+          <input id="lic-key" placeholder="DYS-20261231-XXXXXXXXXXXXXX" />
+          <button class="btn" onclick="App.activate()">激活</button>
+        </div>
+        <p class="hint">默认关闭授权校验；开启后卡密与本机机器码绑定。</p>
+      </div>
+      <div class="card">
+        <h3>数据维护</h3>
+        <div class="row">
+          <button class="btn ghost" onclick="App.openDataDir()">打开数据目录</button>
+          <button class="btn ghost" onclick="App.reloadAll()">刷新全部</button>
+        </div>
+        <p class="hint">数据库为 SQLite（data/douyin.db），可直接用任意 SQLite 工具打开备份。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 日志 -->
+  <section class="panel" id="panel-logs">
+    <div class="row">
+      <button class="btn ghost" onclick="App.clearLogView()">清屏</button>
+      <select id="log-level" onchange="App.filterLogs()">
+        <option value="">全部</option>
+        <option value="ok">成功</option>
+        <option value="info">信息</option>
+        <option value="warn">警告</option>
+        <option value="error">错误</option>
+      </select>
+      <span class="grow"></span>
+      <span class="hint" id="log-count"></span>
+    </div>
+    <pre id="log-view" class="log"></pre>
+  </section>
+</main>
+
+<div id="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
