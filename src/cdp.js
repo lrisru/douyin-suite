@@ -2,18 +2,42 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { sleep } from './util.js';
 
-const CHROME_CANDIDATES = [
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-  `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
-  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-];
+const CHROME_CANDIDATES = process.platform === 'darwin'
+  ? [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+    `${process.env.HOME}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
+  ]
+  : process.platform === 'linux'
+    ? [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/microsoft-edge',
+      '/snap/bin/chromium',
+    ]
+    : [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    ];
 
 export function findChrome(config = {}) {
   if (config.chrome && fs.existsSync(config.chrome)) return config.chrome;
   for (const p of CHROME_CANDIDATES) {
     try { if (p && fs.existsSync(p)) return p; } catch { /* ignore */ }
+  }
+  // macOS 上允许用户没装到 /Applications 的情况，最后兜底查一次常见名字
+  if (process.platform === 'darwin') {
+    for (const name of ['Google Chrome', 'Chromium', 'Microsoft Edge']) {
+      const p = `/Applications/${name}.app/Contents/MacOS/${name}`;
+      try { if (fs.existsSync(p)) return p; } catch { /* ignore */ }
+    }
   }
   return '';
 }

@@ -1,4 +1,4 @@
-import http from 'node:http';
+﻿import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -439,7 +439,8 @@ async function handleApi(req, res, url) {
     fs.mkdirSync(dir, { recursive: true });
     try {
       const { spawn } = await import('node:child_process');
-      spawn('explorer', [dir], { detached: true, stdio: 'ignore' }).unref();
+      const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+      spawn(opener, [dir], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
     return sendJson(res, 200, { ok: true, data: dir });
   }
@@ -449,7 +450,8 @@ async function handleApi(req, res, url) {
     fs.mkdirSync(dir, { recursive: true });
     try {
       const { spawn } = await import('node:child_process');
-      spawn('explorer', [dir], { detached: true, stdio: 'ignore' }).unref();
+      const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+      spawn(opener, [dir], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
     return sendJson(res, 200, { ok: true, data: dir });
   }
