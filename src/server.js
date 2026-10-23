@@ -101,6 +101,16 @@ function parseCookies(text) {
 async function handleApi(req, res, url) {
   const p = url.pathname;
   const q = url.searchParams;
+
+  // 授权门禁：开了 license.enabled 且未激活时，除「读状态/读设置/激活」外全部拦下
+  const lic = licenseStatus(config);
+  if (lic.enabled && !lic.valid) {
+    const allowed = p === '/api/license' || p === '/api/license/activate' || p === '/api/stats' || p === '/api/settings';
+    if (!allowed) {
+      return sendJson(res, 403, { ok: false, error: `未授权：${lic.reason || '请先激活'}（设置 → 授权）` });
+    }
+  }
+
   const id = (() => {
     const m = p.match(/\/api\/accounts\/(\d+)/) || p.match(/\/api\/proxies\/(\d+)/) || p.match(/\/api\/tasks\/(\d+)/);
     return m ? Number(m[1]) : 0;
