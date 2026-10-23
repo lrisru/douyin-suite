@@ -26,3 +26,11 @@ config.local.json
 keys.csv
 *.keys.txt
 
+
+# 一次性运营脚本（含真实用户 sec_uid，依赖本地数据文件）
+test/dm-*.mjs
+test/find-9.mjs
+test/verify-dm-send.mjs
+test/locate-*.mjs
+test/check-location.mjs
+

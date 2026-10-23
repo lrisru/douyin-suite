@@ -359,15 +359,48 @@ export class DouyinService {
     return { items, pages: res.pages };
   }
 
-  async comments(account, { awemeId, scrolls = 4, limit = 300, url: overrideUrl, patterns }) {
+  async comments(account, { awemeId, scrolls = 8, limit = 300, url: overrideUrl, patterns }) {
     await this.assertLogin(account);
     const url = overrideUrl || `https://www.douyin.com/video/${awemeId}`;
-    const res = await this.capturePage(account, url, patterns || [/aweme\/v1\/web\/comment\/list/], {
-      scrolls, settleMs: 2600, ctx: { awemeId },
+    const { cdp } = await this.host.page(account);
+    const collector = new ResponseCollector(cdp, patterns || [/aweme\/v1\/web\/comment\/list/]);
+    const out = { comments: [], pages: 0 };
+    collector.watch((entry) => {
+      out.pages++;
+      collectFromJson(entry.json, { awemeId }, out);
     });
+    try {
+      await cdp.navigate(url, { waitMs: 600 });
+      await sleep(2800);
+      // 展开评论区
+      try { await cdp.clickFirst(SEL.commentIcon); } catch { /* 已展开 */ }
+      await sleep(1600);
+      // 评论在独立滚动容器里（不是 window），滚它才会触发加载
+      for (let i = 0; i < scrolls; i++) {
+        await cdp.evaluate(`(() => {
+          let box = document.querySelector('div[class*="route-scroll-container"], div[class*="comment-mainContent"]');
+          if (!box) {
+            let best = null;
+            for (const el of document.querySelectorAll('div')) {
+              const st = getComputedStyle(el);
+              if (!/(auto|scroll)/.test(st.overflowY)) continue;
+              const over = el.scrollHeight - el.clientHeight;
+              if (over > 50 && (!best || over > best.over)) best = { el, over };
+            }
+            box = best ? best.el : null;
+          }
+          if (!box) { window.scrollBy(0, window.innerHeight); return false; }
+          box.scrollTop = box.scrollHeight;
+          return true;
+        })()`);
+        await sleep(1200 + randInt(0, 400));
+      }
+    } finally {
+      collector.stop();
+    }
     const uniq = new Map();
-    for (const c of res.comments) if (c.cid) uniq.set(c.cid, c);
-    return { comments: [...uniq.values()].slice(0, limit), pages: res.pages };
+    for (const c of out.comments) if (c.cid) uniq.set(c.cid, c);
+    return { comments: [...uniq.values()].slice(0, limit), pages: out.pages };
   }
 
   async live(account, { webRid, keyword = '' }) {
@@ -588,18 +621,20 @@ export class DouyinService {
     await sleep(2000);
 
     // 判定：输入框清空 或 面板里出现了刚发的内容
+    // 判定：面板里出现刚发的内容即算成功（输入框是折叠 DIV，读不到内容不代表没发）
     const state = await cdp.evaluate(`(() => {
-      const el = document.querySelector(${JSON.stringify(editor || '[contenteditable]')});
       const box = document.querySelector('[class*="imContainer"]') || document.body;
-      const text = (box.innerText || '');
+      const el = document.querySelector(${JSON.stringify(editor || '[contenteditable]')});
+      const panel = (box.innerText || '');
+      const probe = ${JSON.stringify(String(text).trim().slice(0, 10))};
       return {
         left: el ? String(el.innerText || '').trim() : '',
-        echoed: text.includes(${JSON.stringify(String(text).slice(0, 0))}) || text.includes(${JSON.stringify('')}),
-        sample: text.slice(-120).replace(/\\s+/g, ' '),
+        echoed: probe.length > 0 && panel.includes(probe),
+        tail: panel.slice(-100).replace(/\\s+/g, ' '),
       };
     })()`);
-    const ok = String(state.left).length === 0;
-    return { ok, sent: true, leftover: state.left, panelTail: String(state.sample || '').slice(-60) };
+    const ok = state.echoed || String(state.left).length === 0;
+    return { ok, sent: true, echoed: !!state.echoed, leftover: state.left, panelTail: String(state.tail || '').slice(-70) };
   }
 
   /* --------------------------- 粉丝 / 关注列表 --------------------------- */
