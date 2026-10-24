@@ -260,8 +260,8 @@ const CL = {
         return `<tr>${cb(r)}<td>${i + 1}</td>
           <td class="wrap">${esc((r.desc || '').slice(0, 40))}</td>
           <td>${link}</td><td>${esc(r.author || '')}</td>
-          <td>${r.digg || 0}</td><td>${r.comment_count || 0}</td>
-          <td>${r.collect_count || 0}</td><td>${r.share_count || 0}</td><td>${time}</td></tr>`;
+          <td>${fmtNum(r.digg)}</td><td>${fmtNum(r.comment)}</td>
+          <td>${fmtNum(r.collect)}</td><td>${fmtNum(r.share)}</td><td>${time}</td></tr>`;
       }).join('');
     } else {
       html = list.slice(0, 500).map((r, i) => `<tr>${cb(r)}<td>${i + 1}</td>
@@ -504,6 +504,13 @@ const CL = {
     } catch (e) { /* 忽略 */ }
   },
 };
+
+function fmtNum(n) {
+  const v = Number(n) || 0;
+  if (v >= 100000000) return (v / 100000000).toFixed(1).replace(/\\.0$/, '') + '亿';
+  if (v >= 10000) return (v / 10000).toFixed(1).replace(/\\.0$/, '') + '万';
+  return String(v);
+}
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
