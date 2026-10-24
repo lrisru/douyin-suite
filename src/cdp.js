@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+﻿import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { sleep } from './util.js';
 
@@ -73,7 +73,9 @@ export function launchChrome({ chromePath, profileDir, port, headless, proxy, wi
     `--user-data-dir=${profileDir}`,
     '--no-first-run',
     '--no-default-browser-check',
-    '--disable-blink-features=AutomationControlled',
+    // 不用 --disable-blink-features=AutomationControlled：Chrome 会弹「不受支持的命令行标记」横幅，
+    // 那行提示本身比 webdriver 标记更显眼。改为页面注入隐藏 webdriver。
+    '--excludeSwitches=enable-automation',
     '--disable-features=Translate,OptimizationHints,MediaRouter',
     '--disable-infobars',
     `--window-size=${width},${height}`,
