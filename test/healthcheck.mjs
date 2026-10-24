@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 全面自检：逐个调用 API 与任务，输出通过/失败矩阵。
  */
 const BASE = 'http://127.0.0.1:9527';
@@ -109,14 +109,10 @@ await runTask('search_live', { keyword: '直播带货', limit: 10 }, 'search_liv
   } else {
     add('task', 'comments', false, '没有作品 ID 可用');
   }
-  if (sec) {
-    await runTask('user_profile', { sec_uid: sec }, 'user_profile');
-    await runTask('user_works', { sec_uid: sec, limit: 10 }, 'user_works');
-  } else {
-    add('task', 'user_profile', false, '没有 sec_uid 可用');
-  }
-  // 粉丝列表用固定主播（有公开粉丝），随机用户大多把粉丝设成私密
+  // 用户相关统一用固定主播：随机用户的粉丝/作品多为私密或为空
   const KNOWN_SEC = 'MS4wLjABAAAAo4_zpk9xBJmFrcS0KeYeG0U4N-380rH-K8B91qq8KTo';
+  await runTask('user_profile', { sec_uid: KNOWN_SEC }, 'user_profile');
+  await runTask('user_works', { sec_uid: KNOWN_SEC, limit: 10 }, 'user_works');
   await runTask('followers', { sec_uid: KNOWN_SEC, limit: 20 }, 'followers');
 }
 
