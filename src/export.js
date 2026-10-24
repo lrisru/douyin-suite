@@ -1,4 +1,4 @@
-import { crc32 } from './util.js';
+﻿import { crc32 } from './util.js';
 
 /* --------------------------- 极简 XLSX 写入（ZIP store，无依赖） --------------------------- */
 
@@ -179,6 +179,12 @@ export const EXPORT_SCHEMAS = {
       { key: 'user_name', label: '用户昵称' },
       { key: 'user_sec_uid', label: '用户sec_uid（私信填这个）' },
       { key: 'user_uid', label: '用户UID' },
+      { key: 'user_douyin_id', label: '抖音号' },
+      { key: 'user_gender', label: '性别', get: (r) => (r.user_gender === 1 ? '男' : r.user_gender === 2 ? '女' : '') },
+      { key: 'user_city', label: '地区' },
+      { key: 'user_signature', label: '简介' },
+      { key: 'user_followers', label: '粉丝' },
+      { key: 'user_following', label: '关注' },
       { key: 'digg', label: '点赞' },
       { key: 'create_time', label: '发布时间', get: (r) => (r.create_time ? new Date(r.create_time * 1000).toLocaleString() : '') },
       { key: 'collected_at', label: '采集时间', get: (r) => (r.collected_at ? new Date(r.collected_at).toLocaleString() : '') },
