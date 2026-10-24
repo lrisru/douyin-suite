@@ -92,6 +92,7 @@
       <button data-mod="comments" class="active">【采集】视频评论</button>
       <button data-mod="group">【采集】群成员</button>
       <button data-mod="video-user">【采集】视频/用户</button>
+      <button data-mod="live">【采集】直播间</button>
       <span class="spacer"></span>
       <button onclick="CL.toast('已是最新版本')">更新</button>
       <button class="qr" onclick="CL.showQr()">用户二维码</button>
@@ -144,6 +145,7 @@
         <button class="act" onclick="CL.exportExcel()">导出Excel</button>
         <button class="act" onclick="CL.importExcel()">导入Excel</button>
         <button class="act" onclick="CL.genScript()">生成话术</button><button class="act" onclick="CL.dmSelected()">私信选中</button>
+        <button class="act" id="btn-danmu" style="display:none" onclick="CL.collectDanmu()">采弹幕</button>
         <button class="act" onclick="CL.selectAll()">全选</button>
       </div>
     </div>

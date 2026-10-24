@@ -1,0 +1,11 @@
+﻿import { loadConfig } from "../src/util.js";
+import * as db from "../src/db.js";
+db.initDb(loadConfig(process.cwd()));
+const cols = db.getDb().prepare("PRAGMA table_info(lives)").all();
+console.log("lives 列:", cols.map(c => c.name).join(", "));
+const n = db.getDb().prepare("SELECT COUNT(*) c FROM lives").get().c;
+console.log("直播记录:", n);
+const rows = db.getDb().prepare("SELECT web_rid, room_id, title, anchor, online, keyword FROM lives ORDER BY id DESC LIMIT 5").all();
+console.log("最近 5 条:", JSON.stringify(rows, null, 1));
+const msgs = db.getDb().prepare("SELECT COUNT(*) c FROM live_messages").get().c;
+console.log("弹幕条数:", msgs);

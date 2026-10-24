@@ -4,6 +4,7 @@ const MODS = {
   comments: { kind: 'comments', keyword: false, title: '视频评论' },
   group: { kind: 'users', keyword: false, title: '群成员' },
   'video-user': { kind: 'users', keyword: false, title: '视频/用户' },
+  live: { kind: 'lives', keyword: false, title: '直播间' },
   auto: { kind: null, keyword: false, title: '自动化操作区' },
 };
 
@@ -11,6 +12,7 @@ const COLS = {
   items: ['编号', '标题', '链接', '作者', '点赞', '评论', '收藏', '分享', '发布时间'],
   comments: ['编号', '链接', '时间', '昵称', '评论内容', 'UID', '抖音号', '性别', '地区', '简介', '粉丝', '关注'],
   users: ['编号', '昵称', '抖音号', 'sec_uid', '粉丝', '关注', '总获赞', '签名', '地区'],
+  lives: ['编号', '标题', '主播', '房间号', '在线', '关键词', '链接'],
 };
 
 const CL = {
@@ -263,6 +265,17 @@ const CL = {
           <td>${fmtNum(r.digg)}</td><td>${fmtNum(r.comment)}</td>
           <td>${fmtNum(r.collect)}</td><td>${fmtNum(r.share)}</td><td>${time}</td></tr>`;
       }).join('');
+    } else if (kind === 'lives') {
+      html = list.slice(0, 500).map((r, i) => {
+        const rid = r.web_rid || r.room_id || '';
+        return `<tr>${cb(r)}<td>${i + 1}</td>
+          <td class="wrap">${esc((r.title || '(无标题)').slice(0, 40))}</td>
+          <td>${esc(r.anchor || '')}</td>
+          <td>${esc(rid)}</td>
+          <td>${r.online || 0}</td>
+          <td>${esc(r.keyword || '')}</td>
+          <td>${esc(r.url || '')}</td></tr>`;
+      }).join('');
     } else {
       html = list.slice(0, 500).map((r, i) => `<tr>${cb(r)}<td>${i + 1}</td>
         <td>${esc(r.nickname || '')}</td><td>${esc(r.unique_id || '')}</td>
@@ -354,6 +367,24 @@ const CL = {
     } catch (e) { CL.toast(e.message, 'error'); }
   },
 
+  async collectDanmu() {
+    const picked = CL.rows.filter((r) => CL.selected.has(r.id));
+    if (!picked.length) return CL.toast('先在上表勾选要采的直播间', 'warn');
+    const rid = picked.map((r) => r.web_rid || r.room_id).filter(Boolean);
+    if (!rid.length) return CL.toast('选中的直播间没有房间号', 'warn');
+    const min = Number(prompt('监听多少分钟？', '5')) || 5;
+    CL.status('开始监听弹幕…');
+    try {
+      let n = 0;
+      for (const r of rid.slice(0, 3)) {
+        await CL.api('/api/tasks', { method: 'POST', body: { type: 'live_stream', params: { web_rid: r, minutes: min } } });
+        n++;
+      }
+      CL.toast(`已启动 ${n} 个弹幕监听，${min} 分钟后自动结束`, 'ok', 6000);
+      CL.status(`监听中（${min} 分钟）`);
+    } catch (e) { CL.toast(e.message, 'error'); }
+  },
+
   async dmSelected() {
     if (!CL.selected.size) return CL.toast('先勾选要私信的人', 'warn');
     const secs = [...new Set(CL.rows.filter((r) => CL.selected.has(r.id)).map((r) => r.user_sec_uid).filter(Boolean))];
@@ -382,6 +413,8 @@ const CL = {
     document.querySelector('.filter').style.display = (isAuto || conf.kind !== 'comments') ? 'none' : '';
     document.querySelector('.table-wrap').style.display = isAuto ? 'none' : '';
     // 评论才有筛选；视频/用户保留但只让地区/关键词生效
+    const danmuBtn = document.querySelector('#btn-danmu');
+    if (danmuBtn) danmuBtn.style.display = (conf.kind === 'lives') ? '' : 'none';
     CL.renderHead();
     if (isAuto) CL.loadWatches();
     else CL.load();
