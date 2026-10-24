@@ -97,6 +97,19 @@
       <button class="qr" onclick="CL.showQr()">用户二维码</button>
     </div>
 
+    <!-- 关键词搜索区（仅【采集】搜索视频时显示） -->
+    <div class="links-area" id="search-area" style="display:none">
+      <div class="col" style="flex:1">
+        <div style="display:flex;gap:2px;align-items:center">
+          关键词 <input id="kw" style="flex:1;height:20px;padding:1px 4px;border:1px solid #b8b8b8" placeholder="如 杭州汽车膜 （多个词用 | 分隔）" />
+          <input id="kw-limit" type="number" value="20" style="width:56px;height:20px;padding:1px 4px;border:1px solid #b8b8b8" title="数量" />
+          <button class="act primary" onclick="CL.searchVideo()">搜索视频</button>
+          <button class="act" onclick="CL.loadItems()">刷新列表</button>
+        </div>
+        <div style="font-size:11px;color:#777;margin-top:2px">搜索后在下方表格里勾选，点「导出Excel」或「下载选中」</div>
+      </div>
+    </div>
+
     <div class="links-area">
       <div class="col" style="flex:1">
         <div style="display:flex;gap:2px">
@@ -130,7 +143,7 @@
         <button class="act" onclick="CL.enrich()">补全资料</button>
         <button class="act" onclick="CL.exportExcel()">导出Excel</button>
         <button class="act" onclick="CL.importExcel()">导入Excel</button>
-        <button class="act" onclick="CL.genScript()">生成话术</button>`r`n        <button class="act" onclick="CL.dmSelected()">私信选中</button>
+        <button class="act" onclick="CL.genScript()">生成话术</button><button class="act" onclick="CL.dmSelected()">私信选中</button>
         <button class="act" onclick="CL.selectAll()">全选</button>
       </div>
     </div>

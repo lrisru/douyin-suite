@@ -1,5 +1,20 @@
 ﻿/* 经典界面（仿原版布局）逻辑 */
+const MODS = {
+  'search-video': { kind: 'items', keyword: true, title: '搜索视频' },
+  comments: { kind: 'comments', keyword: false, title: '视频评论' },
+  group: { kind: 'users', keyword: false, title: '群成员' },
+  'video-user': { kind: 'users', keyword: false, title: '视频/用户' },
+  auto: { kind: null, keyword: false, title: '自动化操作区' },
+};
+
+const COLS = {
+  items: ['编号', '标题', '链接', '作者', '点赞', '评论', '收藏', '分享', '发布时间'],
+  comments: ['编号', '链接', '时间', '昵称', '评论内容', 'UID', '抖音号', '性别', '地区', '简介', '粉丝', '关注'],
+  users: ['编号', '昵称', '抖音号', 'sec_uid', '粉丝', '关注', '总获赞', '签名', '地区'],
+};
+
 const CL = {
+  kind: 'comments',
   rows: [],
   filtered: [],
   selected: new Set(),
@@ -170,11 +185,13 @@ const CL = {
 
   /* ---------- 数据 ---------- */
   async load() {
+    const kind = CL.kind || 'comments';
     try {
-      const j = await CL.api('/api/data/comments?limit=1000');
+      const j = await CL.api(`/api/data/${kind}?limit=1000`);
       CL.rows = j.data || [];
       document.querySelector('#st-total').textContent = j.total ?? CL.rows.length;
-      CL.applyFilter();
+      if (kind === 'comments') CL.applyFilter();
+      else { CL.filtered = CL.rows; CL.render(CL.rows); CL.status(`${MODS[CL.mod]?.title || kind}：${j.total} 条`); }
     } catch (e) { CL.toast(e.message, 'error'); }
   },
 
@@ -220,30 +237,46 @@ const CL = {
   /* ---------- 渲染 ---------- */
   render(list) {
     const tb = document.querySelector('#tbl tbody');
-    const genderText = (g) => (g === 1 ? '男' : g === 2 ? '女' : '');
-    tb.innerHTML = list.slice(0, 500).map((r, i) => {
-      const checked = CL.selected.has(r.id) ? 'checked' : '';
-      const link = r.aweme_id ? `https://www.douyin.com/video/${r.aweme_id}` : '';
-      const time = r.create_time ? new Date(r.create_time * 1000).toLocaleDateString() : '';
-      return `<tr>
-        <td><input type="checkbox" data-id="${r.id}" ${checked} onchange="CL.toggleSel(${r.id}, this.checked)"></td>
-        <td>${i + 1}</td>
-        <td title="${link}">${link ? 'douyin.com/video/' + r.aweme_id : ''}</td>
-        <td>${time}</td>
-        <td>${esc(r.user_name || '')}</td>
-        <td class="wrap">${esc(r.text || '')}</td>
-        <td>${r.user_uid || ''}</td>
-        <td>${esc(r.user_douyin_id || '')}</td>
-        <td>${genderText(r.user_gender)}</td>
-        <td>${esc(r.user_city || '')}</td>
-        <td class="wrap">${esc((r.user_signature || '').slice(0, 20))}</td>
-        <td>${r.user_followers || ''}</td>
-        <td>${r.user_following || ''}</td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="13" style="text-align:center;color:#888;padding:20px">没有数据</td></tr>';
+    const kind = CL.kind || 'comments';
+    const cb = (r) => `<td><input type="checkbox" data-id="${r.id}" ${CL.selected.has(r.id) ? 'checked' : ''} onchange="CL.toggleSel(${r.id}, this.checked)"></td>`;
+
+    let html = '';
+    if (kind === 'comments') {
+      const genderText = (g) => (g === 1 ? '男' : g === 2 ? '女' : '');
+      html = list.slice(0, 500).map((r, i) => {
+        const link = r.aweme_id ? `douyin.com/video/${r.aweme_id}` : '';
+        const time = r.create_time ? new Date(r.create_time * 1000).toLocaleDateString() : '';
+        return `<tr>${cb(r)}<td>${i + 1}</td><td>${link}</td><td>${time}</td>
+          <td>${esc(r.user_name || '')}</td><td class="wrap">${esc(r.text || '')}</td>
+          <td>${r.user_uid || ''}</td><td>${esc(r.user_douyin_id || '')}</td>
+          <td>${genderText(r.user_gender)}</td><td>${esc(r.user_city || '')}</td>
+          <td class="wrap">${esc((r.user_signature || '').slice(0, 20))}</td>
+          <td>${r.user_followers || ''}</td><td>${r.user_following || ''}</td></tr>`;
+      }).join('');
+    } else if (kind === 'items') {
+      html = list.slice(0, 500).map((r, i) => {
+        const link = r.aweme_id ? `douyin.com/video/${r.aweme_id}` : '';
+        const time = r.create_time ? new Date(r.create_time * 1000).toLocaleDateString() : '';
+        return `<tr>${cb(r)}<td>${i + 1}</td>
+          <td class="wrap">${esc((r.desc || '').slice(0, 40))}</td>
+          <td>${link}</td><td>${esc(r.author || '')}</td>
+          <td>${r.digg || 0}</td><td>${r.comment_count || 0}</td>
+          <td>${r.collect_count || 0}</td><td>${r.share_count || 0}</td><td>${time}</td></tr>`;
+      }).join('');
+    } else {
+      html = list.slice(0, 500).map((r, i) => `<tr>${cb(r)}<td>${i + 1}</td>
+        <td>${esc(r.nickname || '')}</td><td>${esc(r.unique_id || '')}</td>
+        <td title="${esc(r.sec_uid || '')}">${esc((r.sec_uid || '').slice(0, 16))}</td>
+        <td>${r.follower_count || 0}</td><td>${r.following_count || 0}</td>
+        <td>${r.total_favorited || 0}</td>
+        <td class="wrap">${esc((r.signature || '').slice(0, 22))}</td>
+        <td>${esc(r.ip_location || '')}</td></tr>`).join('');
+    }
+
+    const span = (COLS[kind] || COLS.comments).length + 1;
+    tb.innerHTML = html || `<tr><td colspan="${span}" style="text-align:center;color:#888;padding:20px">没有数据</td></tr>`;
     document.querySelector('#st-sel').textContent = CL.selected.size;
   },
-
   toggleSel(id, on) {
     if (on) CL.selected.add(id); else CL.selected.delete(id);
     document.querySelector('#st-sel').textContent = CL.selected.size;
@@ -337,14 +370,45 @@ const CL = {
   /* ---------- 菜单 ---------- */
   setMod(mod) {
     CL.mod = mod;
+    const conf = MODS[mod] || MODS.comments;
+    CL.kind = conf.kind;
     document.querySelectorAll('.menubar [data-mod]').forEach((b) => b.classList.toggle('active', b.dataset.mod === mod));
+
     const isAuto = mod === 'auto';
     document.querySelector('#watch-panel').style.display = isAuto ? '' : 'none';
-    document.querySelector('.links-area').style.display = isAuto ? 'none' : '';
-    document.querySelector('.filter').style.display = isAuto ? 'none' : '';
+    document.querySelector('#search-area').style.display = conf.keyword ? '' : 'none';
+    document.querySelector('.links-area:not(#search-area)').style.display = (isAuto || conf.keyword) ? 'none' : '';
+    // 筛选区是评论专用的，视频/用户模块不显示
+    document.querySelector('.filter').style.display = (isAuto || conf.kind !== 'comments') ? 'none' : '';
     document.querySelector('.table-wrap').style.display = isAuto ? 'none' : '';
+    // 评论才有筛选；视频/用户保留但只让地区/关键词生效
+    CL.renderHead();
     if (isAuto) CL.loadWatches();
     else CL.load();
+    CL.status(conf.title);
+  },
+
+  renderHead() {
+    const cols = COLS[CL.kind] || COLS.comments;
+    document.querySelector('#tbl thead').innerHTML = '<tr><th style="width:22px"></th>' + cols.map((c) => `<th>${c}</th>`).join('') + '</tr>';
+  },
+
+  async searchVideo() {
+    const kw = document.querySelector('#kw').value.trim();
+    const limit = Number(document.querySelector('#kw-limit').value) || 20;
+    if (!kw) return CL.toast('先填关键词', 'warn');
+    CL.status('搜索中…');
+    try {
+      const j = await CL.api('/api/tasks', { method: 'POST', body: { type: 'search_video', params: { keyword: kw, limit } } });
+      CL.toast(`已建搜索任务 #${j.data.id}，跑完自动刷新`, 'ok');
+      CL.poll();
+    } catch (e) { CL.toast(e.message, 'error'); }
+  },
+
+  async loadItems() {
+    CL.kind = 'items';
+    CL.renderHead();
+    await CL.load();
   },
 
   /* ---------- 监控 ---------- */
