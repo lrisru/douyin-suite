@@ -104,16 +104,36 @@ const CL = {
 
     const awemeIds = [];
     const secUids = [];
+    const liveRids = [];
     for (const l of links) {
+      const mLive = l.match(/live\.douyin\.com\/(?:name\/)?(\d{6,})/);
       const m1 = l.match(/(?:\/video\/|modal_id=)(\d{8,})/);
       const m2 = l.match(/\/user\/(MS4w[A-Za-z0-9_-]+)/);
-      if (m1) awemeIds.push(m1[1]);
+      if (mLive) liveRids.push(mLive[1]);
+      else if (m1) awemeIds.push(m1[1]);
       else if (m2) secUids.push(m2[1]);
       else if (/^\d{8,}$/.test(l)) awemeIds.push(l);
       else if (/^MS4w/.test(l)) secUids.push(l);
     }
 
-    if (!awemeIds.length && !secUids.length) return CL.toast('没从链接里认出作品/用户 ID', 'error');
+    // 直播间模块：直接按房间号采直播信息
+    if (CL.kind === 'lives' && liveRids.length) {
+      CL.status('采集中…');
+      let n = 0;
+      try {
+        for (const rid of liveRids.slice(0, 5)) {
+          await CL.api('/api/tasks', { method: 'POST', body: { type: 'live', params: { web_rid: rid } } });
+          n++;
+        }
+        CL.toast(`已建 ${n} 个直播采集任务`, 'ok');
+        CL.poll();
+      } catch (e) { CL.toast(e.message, 'error'); }
+      return;
+    }
+
+    if (!awemeIds.length && !secUids.length && !liveRids.length) {
+      return CL.toast('没从链接里认出作品/用户/直播间 ID', 'error');
+    }
 
     CL.status('任务创建中…');
     try {
@@ -274,7 +294,7 @@ const CL = {
           <td>${esc(rid)}</td>
           <td>${r.online || 0}</td>
           <td>${esc(r.keyword || '')}</td>
-          <td>${esc(r.url || '')}</td></tr>`;
+          <td>${rid ? `live.douyin.com/${rid}` : ''}</td></tr>`;
       }).join('');
     } else {
       html = list.slice(0, 500).map((r, i) => `<tr>${cb(r)}<td>${i + 1}</td>
