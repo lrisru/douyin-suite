@@ -17,6 +17,7 @@ import { Scheduler } from './scheduler.js';
 import { fingerprintProfile } from './fingerprint.js';
 import { EXPORT_SCHEMAS, toCsv, toXlsx } from './export.js';
 import { checkProxy, checkAll, testProxy } from './proxy.js';
+import { checkIp } from './ip.js';
 import { licenseStatus, activate, machineCode } from './license.js';
 import { notifyTest } from './notify.js';
 import { events, logger, loadConfig, saveConfig, openInBrowser } from './util.js';
@@ -443,6 +444,12 @@ async function handleApi(req, res, url) {
       spawn(opener, [dir], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
     return sendJson(res, 200, { ok: true, data: dir });
+  }
+
+  /* 出口 IP / 归属地（多源交叉校验，验证代理是否生效） */
+  if (p === '/api/ip' && req.method === 'GET') {
+    const r = await checkIp();
+    return sendJson(res, 200, { ok: true, data: r });
   }
 
   if (p === '/api/open-downloads' && req.method === 'POST') {

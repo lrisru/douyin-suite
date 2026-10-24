@@ -1,4 +1,4 @@
-const $ = (s) => document.querySelector(s);
+﻿const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 
 const App = {
@@ -642,6 +642,22 @@ const App = {
     App.toast('批量检测中，请稍候…');
     try { await App.api('/api/proxies/check-all', { method: 'POST' }); await App.reloadProxies(); App.toast('检测完成', 'ok'); }
     catch (e) { App.toast(e.message, 'error'); }
+  },
+
+  async checkMyIp() {
+    const el = document.querySelector('#my-ip');
+    if (el) el.textContent = '查询中…';
+    try {
+      const { data } = await App.api('/api/ip');
+      if (!data.ok) { if (el) el.textContent = '查询失败'; return App.toast('所有 IP 源都没响应', 'error'); }
+      const warn = data.consistent ? '' : '（多源结果不一致，可能走了分流代理）';
+      const text = `当前出口 IP：${data.ip}　归属：${data.location || '未知'}　${warn}`;
+      if (el) el.textContent = text;
+      App.toast(text, data.consistent ? 'ok' : 'warn');
+    } catch (e) {
+      if (el) el.textContent = '查询失败：' + e.message;
+      App.toast(e.message, 'error');
+    }
   },
 
   async delProxy(id) {

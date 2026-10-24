@@ -34,3 +34,9 @@ test/verify-dm-send.mjs
 test/locate-*.mjs
 test/check-location.mjs
 
+
+# exe 逆向提取的中间产物（体积大）
+test/exe-*.txt
+test/exe-res/
+test/exe-screen.png
+

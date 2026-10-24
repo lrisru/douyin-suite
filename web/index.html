@@ -319,7 +319,9 @@
       <button class="btn" onclick="App.addProxy()">添加</button>
       <button class="btn ghost" onclick="App.checkAllProxy()">全部检测</button>
       <button class="btn ghost" onclick="App.reloadProxies()">刷新</button>
+      <button class="btn ghost" onclick="App.checkMyIp()">查我的出口 IP</button>
     </div>
+    <p class="hint" id="my-ip"></p>
     <div class="table-wrap"><table id="tbl-proxy"><thead><tr>
       <th>#</th><th>地址</th><th>状态</th><th>延迟(ms)</th><th>出口 IP</th><th>操作</th>
     </tr></thead><tbody></tbody></table></div>
