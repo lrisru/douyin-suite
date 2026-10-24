@@ -34,6 +34,28 @@ const CL = {
     return j;
   },
 
+
+  /** 页面内输入框，替代 prompt（Chrome 会拦原生弹窗） */
+  ask(title, defaultValue = '') {
+    return new Promise((resolve) => {
+      const box = document.querySelector('#modal');
+      document.querySelector('#modal-title').textContent = title;
+      const input = document.querySelector('#modal-input');
+      input.value = defaultValue;
+      box.style.display = 'flex';
+      input.focus();
+      input.select();
+      CL._modalResolve = resolve;
+    });
+  },
+
+  modalClose(val) {
+    document.querySelector('#modal').style.display = 'none';
+    const r = CL._modalResolve;
+    CL._modalResolve = null;
+    if (r) r(val);
+  },
+
   toast(msg, type = 'info', ms = 4000) {
     const el = document.createElement('div');
     el.className = `toast ${type}`;
@@ -200,6 +222,21 @@ const CL = {
         }
       } catch (e) { /* 忽略 */ }
     }, 3000);
+  },
+
+
+  /** 删除当前勾选的行（真删库） */
+  async deleteSelected() {
+    const ids = [...CL.selected];
+    if (!ids.length) return CL.toast('先勾选要删除的行', 'warn');
+    const ok = await CL.ask(`确认删除 ${ids.length} 条？此操作不可恢复（输入 ok 继续）`, '');
+    if (String(ok || '').trim().toLowerCase() !== 'ok') return CL.toast('已取消', 'info');
+    try {
+      const r = await CL.api('/api/data/delete', { method: 'POST', body: { kind: CL.kind || 'comments', ids } });
+      CL.selected.clear();
+      CL.toast(`已删除 ${r.data?.deleted || ids.length} 条`, 'ok');
+      await CL.load();
+    } catch (e) { CL.toast(e.message, 'error'); }
   },
 
   async refresh() {
@@ -375,7 +412,7 @@ const CL = {
   },
 
   async enrich() {
-    const n = prompt('补全多少个评论者资料？（性别/城市/简介/粉丝，约 0.8 秒/个）', '50');
+    const n = await CL.ask('补全多少个评论者资料？（性别/城市/简介/粉丝，约 0.8 秒/个）', '50');
     if (n === null) return;
     CL.status('补全中…');
     try {
@@ -400,14 +437,14 @@ const CL = {
         city = row.user_city || p.data.city || '';
       }
     }
-    const input = prompt('车型 / 预算 / 城市（用空格分隔，可从选中评论自动带出）', [car, budget, city].filter(Boolean).join(' '));
+    const input = await CL.ask('车型 / 预算 / 城市（用空格分隔，可从选中评论自动带出）', [car, budget, city].filter(Boolean).join(' '));
     if (input === null) return;
     const parts = input.trim().split(/\s+/);
     CL.status('生成中…');
     try {
       const j = await CL.api('/api/generate', { method: 'POST', body: { type: 'dm', car: parts[0] || '', budget: parts[1] || '', city: parts[2] || '', count: 3 } });
       const text = j.data.items.map((x, i) => `${i + 1}. ${x}`).join('\n');
-      const pick = prompt(`生成 3 条（复制一条去私信）：\n\n${text}\n\n修改后可直接用于私信：`, j.data.items[0]);
+      const pick = await CL.ask(`生成 3 条（复制一条去私信）：\n\n${text}\n\n修改后可直接用于私信：`, j.data.items[0]);
       if (pick) {
         document.querySelector('#links').value = '';
         CL.pendingScript = pick;
@@ -422,7 +459,7 @@ const CL = {
     if (!picked.length) return CL.toast('先在上表勾选要采的直播间', 'warn');
     const rid = picked.map((r) => r.web_rid || r.room_id).filter(Boolean);
     if (!rid.length) return CL.toast('选中的直播间没有房间号', 'warn');
-    const min = Number(prompt('监听多少分钟？', '5')) || 5;
+    const min = Number(await CL.ask('监听多少分钟？', '5')) || 5;
     CL.status('开始监听弹幕…');
     try {
       let n = 0;
@@ -439,7 +476,7 @@ const CL = {
     if (!CL.selected.size) return CL.toast('先勾选要私信的人', 'warn');
     const secs = [...new Set(CL.rows.filter((r) => CL.selected.has(r.id)).map((r) => r.user_sec_uid).filter(Boolean))];
     if (!secs.length) return CL.toast('选中的人没有 sec_uid，先点「补全评论者资料」', 'warn');
-    const text = prompt(`向 ${secs.length} 人发私信。话术（多条用 | 分隔）：`, CL.pendingScript || '看到您在问贴膜，什么车型？我按车型给您报个实在价');
+    const text = await CL.ask(`向 ${secs.length} 人发私信。话术（多条用 | 分隔）：`, CL.pendingScript || '看到您在问贴膜，什么车型？我按车型给您报个实在价');
     if (text === null) return;
     try {
       const texts = text.split('|').map((s) => s.trim()).filter(Boolean);

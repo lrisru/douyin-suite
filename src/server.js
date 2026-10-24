@@ -7,7 +7,7 @@ import {
   listTasks, getTask, queryRows, countRows, stats, queryLogs,
   listProxies, addProxy, removeProxy, insertLog, pruneLogs,
   listSchedules, getSchedule, createSchedule, updateSchedule, deleteSchedule,
-  queryLiveMessages, upsertItem, upsertUser, upsertComment, upsertLive,
+  queryLiveMessages, upsertItem, upsertUser, upsertComment, upsertLive, getDb,
 } from './db.js';
 import { BrowserHost } from './browser.js';
 import { DouyinService } from './douyin.js';
@@ -449,6 +449,21 @@ async function handleApi(req, res, url) {
       spawn(opener, [dir], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
     return sendJson(res, 200, { ok: true, data: dir });
+  }
+
+  /* 删除选中的数据行 */
+  if (p === '/api/data/delete' && req.method === 'POST') {
+    const body = await readBody(req);
+    const kind = String(body.kind || 'comments');
+    const table = { items: 'items', users: 'users', comments: 'comments', lives: 'lives', conversations: 'conversations' }[kind];
+    if (!table) return sendJson(res, 400, { ok: false, error: '未知数据源: ' + kind });
+    const ids = (Array.isArray(body.ids) ? body.ids : []).map(Number).filter(Boolean);
+    if (!ids.length) return sendJson(res, 400, { ok: false, error: '没有要删除的 id' });
+    const d = getDb();
+    const stmt = d.prepare(`DELETE FROM ${table} WHERE id = ?`);
+    let n = 0;
+    for (const id of ids) { try { n += stmt.run(id).changes || 0; } catch { /* ignore */ } }
+    return sendJson(res, 200, { ok: true, data: { deleted: n } });
   }
 
   /* 内容生成：按车型/预算/城市拼话术；也能从评论文本反推参数 */

@@ -70,6 +70,15 @@
   .toast.ok { background: #2e9e4f; }
   .toast.warn { background: #c98a1a; }
   .toast.error { background: #c9432f; }
+
+  /* 内嵌对话框（替代 prompt，避免被浏览器拦截） */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 200; }
+  .modal-box { background: #fff; border: 1px solid #b8b8b8; border-radius: 3px; width: 420px; padding: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  .modal-title { font-weight: 600; margin-bottom: 6px; font-size: 12px; }
+  .modal-box textarea { width: 100%; height: 96px; border: 1px solid #b8b8b8; padding: 4px 6px; font-size: 12px; resize: vertical; font-family: inherit; }
+  .modal-btns { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+  .modal-btns button { padding: 4px 14px; border: 1px solid #adadad; background: #f7f7f7; cursor: pointer; font-size: 12px; }
+  .modal-btns button.ok { background: #2b7fb8; color: #fff; border-color: #2b7fb8; }
 </style>
 </head>
 <body>
@@ -141,7 +150,7 @@
       </div>
       <div class="row2">
         <button class="act" onclick="CL.applyFilter()">一键筛选</button>
-        <button class="act" onclick="CL.clearFilter()">全部删除</button>
+        <button class="act" onclick="CL.deleteSelected()">删除选中</button>
         <button class="act" onclick="CL.enrich()">补全资料</button>
         <button class="act" onclick="CL.exportExcel()">导出Excel</button>
         <button class="act" onclick="CL.importExcel()">导入Excel</button>
@@ -189,6 +198,16 @@
     </div>
   </div>
 
+  <div class="modal" id="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title"></div>
+      <textarea id="modal-input"></textarea>
+      <div class="modal-btns">
+        <button onclick="CL.modalClose(null)">取消</button>
+        <button class="ok" onclick="CL.modalClose(document.querySelector('#modal-input').value)">确定</button>
+      </div>
+    </div>
+  </div>
   <div class="toast-box" id="toast"></div>
 
 <script src="classic.js"></script>
