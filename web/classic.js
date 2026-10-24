@@ -1,4 +1,4 @@
-/* 经典界面（仿原版布局）逻辑 */
+﻿/* 经典界面（仿原版布局）逻辑 */
 const CL = {
   rows: [],
   filtered: [],
@@ -44,6 +44,11 @@ const CL = {
     };
     tick();
     if (live) CL.screenTimer = setInterval(tick, 2500);
+  },
+
+  async home() {
+    document.querySelector('#url').value = 'https://www.douyin.com';
+    await CL.openUrl();
   },
 
   async openUrl() {
@@ -308,12 +313,25 @@ const CL = {
     document.querySelectorAll('.menubar [data-mod]').forEach((b) => {
       b.addEventListener('click', () => CL.setMod(b.dataset.mod));
     });
-    document.querySelector('#f-live').addEventListener('change', (e) => {
-      if (e.target.checked) CL.liveTimer = setInterval(CL.load, 15000);
-      else clearInterval(CL.liveTimer);
-    });
-    CL.startScreen(true);
+    const liveBox = document.querySelector('#f-live');
+    if (liveBox) {
+      liveBox.addEventListener('change', (e) => {
+        if (e.target.checked) CL.liveTimer = setInterval(CL.load, 15000);
+        else clearInterval(CL.liveTimer);
+      });
+    }
+    // 先加载数据：/api/screen 会启动浏览器，单线程下会拖住后面的请求
     await CL.load();
+    setTimeout(() => CL.startScreen(true), 300);
+    // 默认停在抖音首页（原版就是这个状态）
+    try {
+      const j = await CL.api('/api/screen');
+      if (j.data?.url && !/^https:\/\/www\.douyin\.com\/?$/.test(j.data.url)) {
+        await CL.api('/api/navigate', { method: 'POST', body: { url: 'https://www.douyin.com' } });
+        document.querySelector('#url').value = 'https://www.douyin.com';
+        setTimeout(() => CL.startScreen(false), 2000);
+      }
+    } catch (e) { /* 忽略 */ }
     try {
       const s = await CL.api('/api/stats');
       const parts = [`作品 ${s.data.items}`, `评论 ${s.data.comments}`, `用户 ${s.data.users}`];
