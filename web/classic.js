@@ -145,22 +145,27 @@ const CL = {
 
   /* ---------- 备份 ---------- */
   async backup() {
+    CL.status('备份中…');
     try {
-      const j = await CL.api('/api/data/comments?limit=5000');
-      localStorage.setItem('dy_backup_comments', JSON.stringify(j.data || []));
-      CL.toast(`已备份 ${j.data.length} 条到浏览器本地`, 'ok');
+      const j = await CL.api('/api/backup', { method: 'POST' });
+      const c = j.data.counts;
+      CL.toast(`已备份到文件：作品${c.items} 用户${c.users} 评论${c.comments}`, 'ok', 6000);
+      CL.status('备份完成 ' + j.data.file);
     } catch (e) { CL.toast(e.message, 'error'); }
   },
 
   async restore() {
-    const raw = localStorage.getItem('dy_backup_comments');
-    if (!raw) return CL.toast('没有备份', 'warn');
     try {
-      const arr = JSON.parse(raw);
-      CL.rows = arr;
-      CL.render(arr);
-      CL.toast(`已恢复 ${arr.length} 条（仅界面展示）`, 'ok');
-    } catch (e) { CL.toast('备份损坏', 'error'); }
+      const j = await CL.api('/api/backups');
+      const files = j.data || [];
+      if (!files.length) return CL.toast('还没有备份文件', 'warn');
+      const latest = files[0];
+      if (!confirm(`从最新备份恢复？\n${latest.file}\n${(latest.size / 1048576).toFixed(1)} MB`)) return;
+      CL.status('恢复中…');
+      const r = await CL.api('/api/restore', { method: 'POST', body: { file: 'data/backups/' + latest.file } });
+      CL.toast(`已恢复 ${r.data.restored} 条记录`, 'ok', 6000);
+      await CL.load();
+    } catch (e) { CL.toast(e.message, 'error'); }
   },
 
   /* ---------- 数据 ---------- */
@@ -285,11 +290,42 @@ const CL = {
     } catch (e) { CL.toast(e.message, 'error'); }
   },
 
+  async genScript() {
+    // 优先用选中的评论自动反推车型/预算/城市
+    let car = '';
+    let budget = '';
+    let city = '';
+    if (CL.selected.size) {
+      const row = CL.rows.find((r) => CL.selected.has(r.id));
+      if (row) {
+        const p = await CL.api('/api/parse-intent', { method: 'POST', body: { text: row.text || '' } });
+        car = p.data.car || '';
+        budget = p.data.budget || '';
+        city = row.user_city || p.data.city || '';
+      }
+    }
+    const input = prompt('车型 / 预算 / 城市（用空格分隔，可从选中评论自动带出）', [car, budget, city].filter(Boolean).join(' '));
+    if (input === null) return;
+    const parts = input.trim().split(/\s+/);
+    CL.status('生成中…');
+    try {
+      const j = await CL.api('/api/generate', { method: 'POST', body: { type: 'dm', car: parts[0] || '', budget: parts[1] || '', city: parts[2] || '', count: 3 } });
+      const text = j.data.items.map((x, i) => `${i + 1}. ${x}`).join('\n');
+      const pick = prompt(`生成 3 条（复制一条去私信）：\n\n${text}\n\n修改后可直接用于私信：`, j.data.items[0]);
+      if (pick) {
+        document.querySelector('#links').value = '';
+        CL.pendingScript = pick;
+        CL.toast('话术已准备好，勾选人要私信时会用到', 'ok');
+      }
+      CL.status('话术已生成');
+    } catch (e) { CL.toast(e.message, 'error'); }
+  },
+
   async dmSelected() {
     if (!CL.selected.size) return CL.toast('先勾选要私信的人', 'warn');
     const secs = [...new Set(CL.rows.filter((r) => CL.selected.has(r.id)).map((r) => r.user_sec_uid).filter(Boolean))];
     if (!secs.length) return CL.toast('选中的人没有 sec_uid，先点「补全评论者资料」', 'warn');
-    const text = prompt(`向 ${secs.length} 人发私信。话术（多条用 | 分隔）：`, '看到您在问贴膜，什么车型？我按车型给您报个实在价');
+    const text = prompt(`向 ${secs.length} 人发私信。话术（多条用 | 分隔）：`, CL.pendingScript || '看到您在问贴膜，什么车型？我按车型给您报个实在价');
     if (text === null) return;
     try {
       const texts = text.split('|').map((s) => s.trim()).filter(Boolean);
@@ -302,7 +338,72 @@ const CL = {
   setMod(mod) {
     CL.mod = mod;
     document.querySelectorAll('.menubar [data-mod]').forEach((b) => b.classList.toggle('active', b.dataset.mod === mod));
-    CL.load();
+    const isAuto = mod === 'auto';
+    document.querySelector('#watch-panel').style.display = isAuto ? '' : 'none';
+    document.querySelector('.links-area').style.display = isAuto ? 'none' : '';
+    document.querySelector('.filter').style.display = isAuto ? 'none' : '';
+    document.querySelector('.table-wrap').style.display = isAuto ? 'none' : '';
+    if (isAuto) CL.loadWatches();
+    else CL.load();
+  },
+
+  /* ---------- 监控 ---------- */
+  async loadWatches() {
+    try {
+      const j = await CL.api('/api/watches');
+      const list = j.data || [];
+      const tb = document.querySelector('#watch-tbl tbody');
+      const typeName = (t) => (t === 'user_new_works' ? '博主新作品' : t === 'video_new_comments' ? '视频新评论' : t);
+      tb.innerHTML = list.map((w) => `<tr>
+        <td>${w.id}</td>
+        <td>${typeName(w.type)}</td>
+        <td title="${esc(w.target)}">${esc(String(w.target).slice(0, 22))}</td>
+        <td>${esc(w.note || '')}</td>
+        <td>${w.interval_sec}s</td>
+        <td>${w.last_check ? new Date(w.last_check).toLocaleTimeString() : '未检查'}</td>
+        <td>${w.hits || 0}</td>
+        <td>
+          <button class="act" style="padding:0 6px" onclick="CL.checkWatch(${w.id})">立即查</button>
+          <button class="act" style="padding:0 6px" onclick="CL.delWatch(${w.id})">删除</button>
+        </td>
+      </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#888;padding:10px">还没有监控项</td></tr>';
+      document.querySelector('#st-total').textContent = list.length;
+      CL.status(`监控 ${list.length} 项`);
+    } catch (e) { CL.toast(e.message, 'error'); }
+  },
+
+  async addWatch() {
+    const type = document.querySelector('#w-type').value;
+    let target = document.querySelector('#w-target').value.trim();
+    const note = document.querySelector('#w-note').value.trim();
+    const interval = Number(document.querySelector('#w-interval').value) || 600;
+    if (!target) return CL.toast('填目标：博主 sec_uid 或视频链接', 'warn');
+    const mv = target.match(/(?:\/video\/|modal_id=)(\d{8,})/);
+    if (mv) target = mv[1];
+    try {
+      const j = await CL.api('/api/watches', { method: 'POST', body: { type, target, note, interval_sec: interval } });
+      CL.toast(j.data.existed ? '已存在，已重新启用' : `已添加监控 #${j.data.id}`, 'ok');
+      document.querySelector('#w-target').value = '';
+      document.querySelector('#w-note').value = '';
+      await CL.loadWatches();
+    } catch (e) { CL.toast(e.message, 'error'); }
+  },
+
+  async checkWatch(id) {
+    CL.status(`检查中 #${id}…`);
+    try {
+      const j = await CL.api(`/api/watches/${id}/check`, { method: 'POST' });
+      CL.toast(j.data.added ? `发现 ${j.data.added} 条新数据` : '没有新数据', j.data.added ? 'ok' : 'info', 5000);
+      CL.status(`#${id} 检查完成，新增 ${j.data.added}`);
+      await CL.loadWatches();
+    } catch (e) { CL.toast(e.message, 'error'); }
+  },
+
+  async delWatch(id) {
+    try {
+      await CL.api(`/api/watches/${id}`, { method: 'DELETE' });
+      await CL.loadWatches();
+    } catch (e) { CL.toast(e.message, 'error'); }
   },
 
   showQr() {

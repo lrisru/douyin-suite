@@ -7,7 +7,7 @@ import {
   listTasks, getTask, queryRows, countRows, stats, queryLogs,
   listProxies, addProxy, removeProxy, insertLog, pruneLogs,
   listSchedules, getSchedule, createSchedule, updateSchedule, deleteSchedule,
-  queryLiveMessages,
+  queryLiveMessages, upsertItem, upsertUser, upsertComment, upsertLive,
 } from './db.js';
 import { BrowserHost } from './browser.js';
 import { DouyinService } from './douyin.js';
@@ -19,6 +19,8 @@ import { EXPORT_SCHEMAS, toCsv, toXlsx } from './export.js';
 import { checkProxy, checkAll, testProxy } from './proxy.js';
 import { checkIp } from './ip.js';
 import { enrichComments } from './enrich.js';
+import { WatchManager } from './watch.js';
+import { generate, parseIntent } from './generate.js';
 import { licenseStatus, activate, machineCode } from './license.js';
 import { notifyTest } from './notify.js';
 import { events, logger, loadConfig, saveConfig, openInBrowser } from './util.js';
@@ -35,6 +37,8 @@ const douyin = new DouyinService(host, config);
 const liveManager = new LiveManager(host);
 const engine = new TaskEngine({ douyin, config, liveManager });
 const scheduler = new Scheduler({ engine, config });
+const watcher = new WatchManager({ douyin, host, config });
+watcher.start();
 
 events.on('log', (item) => insertLog(item));
 setInterval(() => pruneLogs(5000), 5 * 60 * 1000).unref();
@@ -445,6 +449,89 @@ async function handleApi(req, res, url) {
       spawn(opener, [dir], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
     return sendJson(res, 200, { ok: true, data: dir });
+  }
+
+  /* 内容生成：按车型/预算/城市拼话术；也能从评论文本反推参数 */
+  if (p === '/api/generate' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = generate(body || {});
+    return sendJson(res, 200, { ok: true, data: r });
+  }
+  if (p === '/api/parse-intent' && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = parseIntent(String(body.text || ''));
+    return sendJson(res, 200, { ok: true, data: r });
+  }
+
+  /* 备份到文件 / 从文件恢复（原版是文件备份，不只是内存） */
+  if (p === '/api/backup' && req.method === 'POST') {
+    const dir = path.join(path.resolve(config.dataDir), 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const file = path.join(dir, `backup_${stamp}.json`);
+    const kinds = ['items', 'users', 'comments', 'lives', 'conversations'];
+    const dump = {};
+    for (const k of kinds) dump[k] = queryRows(k, { limit: 100000 });
+    fs.writeFileSync(file, JSON.stringify(dump, null, 1));
+    return sendJson(res, 200, { ok: true, data: { file, counts: Object.fromEntries(kinds.map((k) => [k, dump[k].length])) } });
+  }
+  if (p === '/api/restore' && req.method === 'POST') {
+    const body = await readBody(req);
+    const file = body.file ? path.resolve(body.file) : '';
+    if (!file || !fs.existsSync(file)) return sendJson(res, 400, { ok: false, error: '备份文件不存在' });
+    const dump = JSON.parse(fs.readFileSync(file, 'utf8'));
+    let n = 0;
+    for (const it of dump.items || []) { upsertItem(it); n++; }
+    for (const u of dump.users || []) { upsertUser(u); n++; }
+    for (const c of dump.comments || []) { upsertComment(c); n++; }
+    for (const l of dump.lives || []) { upsertLive(l); n++; }
+    return sendJson(res, 200, { ok: true, data: { restored: n } });
+  }
+  if (p === '/api/backups' && req.method === 'GET') {
+    const dir = path.join(path.resolve(config.dataDir), 'backups');
+    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => {
+      const st = fs.statSync(path.join(dir, f));
+      return { file: f, size: st.size, at: st.mtimeMs };
+    }).sort((a, b) => b.at - a.at) : [];
+    return sendJson(res, 200, { ok: true, data: files });
+  }
+
+  /* 监控：博主新作品 / 视频新评论 */
+  if (p === '/api/watches' && req.method === 'GET') {
+    return sendJson(res, 200, { ok: true, data: watcher.list() });
+  }
+  if (p === '/api/watches' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (!body.type || !body.target) return sendJson(res, 400, { ok: false, error: '缺少 type 或 target' });
+    const r = watcher.add({
+      type: String(body.type),
+      target: String(body.target),
+      note: String(body.note || ''),
+      account_id: body.account_id || null,
+      interval_sec: Number(body.interval_sec || 600),
+    });
+    return sendJson(res, 200, { ok: true, data: r });
+  }
+  if (p.startsWith('/api/watches/') && req.method === 'POST') {
+    const m = p.match(/\/api\/watches\/(\d+)(?:\/(\w+))?$/);
+    if (!m) return sendJson(res, 400, { ok: false, error: '参数不对' });
+    const wid = Number(m[1]);
+    const action = m[2] || '';
+    if (action === 'check') {
+      const r = await watcher.checkNow(wid);
+      return sendJson(res, 200, { ok: true, data: r });
+    }
+    if (action === 'toggle') {
+      const body = await readBody(req);
+      watcher.toggle(wid, !!body.enabled);
+      return sendJson(res, 200, { ok: true });
+    }
+    return sendJson(res, 400, { ok: false, error: '未知操作' });
+  }
+  if (p.startsWith('/api/watches/') && req.method === 'DELETE') {
+    const wid = Number(p.split('/').pop());
+    watcher.remove(wid);
+    return sendJson(res, 200, { ok: true });
   }
 
   /* 实时画面：把账号浏览器的当前页截图给前端（原版左侧内嵌浏览器效果） */

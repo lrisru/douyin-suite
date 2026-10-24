@@ -1,4 +1,4 @@
-import {
+﻿import {
   createTask, updateTask, bumpTask, getAccount, listAccounts,
   upsertItem, upsertUser, upsertComment, upsertLive, upsertConversation, insertLog,
 } from './db.js';
@@ -266,6 +266,17 @@ export class TaskEngine {
               const r = task.type === 'comment'
                 ? await this.douyin.comment(acc, { awemeId: id, text, dryRun: !!params.dryRun })
                 : await this.douyin.dm(acc, { secUid: id, text, dryRun: !!params.dryRun });
+              // 私信成功后附带动作（原版支持顺带点赞/收藏）
+              if (r.ok && !r.dryRun && Array.isArray(params.after)) {
+                for (const act of params.after) {
+                  try {
+                    if (act === 'like' && task.type === 'comment') await this.douyin.like(acc, { awemeId: id });
+                    else if (act === 'collect' && task.type === 'comment') await this.douyin.collect(acc, { awemeId: id });
+                    else if (act === 'follow') await this.douyin.follow(acc, { secUid: id });
+                    await sleep(randInt(600, 1400));
+                  } catch (e) { logger.warn('task', `附带动作 ${act} 失败: ${e.message}`); }
+                }
+              }
               logger.ok('task', `#${acc.id} ${task.type} ${id} -> ${r.dryRun ? '仅测试输入' : (r.ok ? '成功' : '未确认')} 「${truncate(text, 30)}」`);
               if (r.dryRun) { bumpTask(task.id, 'done'); ok++; }
               else { bumpTask(task.id, r.ok ? 'done' : 'failed'); if (r.ok) ok++; else fail++; }

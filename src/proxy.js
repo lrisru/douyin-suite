@@ -1,4 +1,5 @@
-import http from 'node:http';
+﻿import http from 'node:http';
+import { socks5Check, parseSocks } from './socks5.js';
 import { logger } from './util.js';
 import { listProxies, updateProxy, pickProxy } from './db.js';
 
@@ -21,7 +22,14 @@ export function testProxy(url, timeoutMs = 8000) {
     const p = parseProxy(url);
     if (!p) return resolve({ ok: false, error: '代理地址格式不对' });
     if (p.protocol.startsWith('socks')) {
-      return resolve({ ok: false, error: 'socks 代理请在浏览器里直接用（本项只测 http）' });
+      const s = parseSocks(url);
+      if (!s) return resolve({ ok: false, error: 'socks 地址解析失败' });
+      socks5Check(s.host, s.port, { user: s.user, pass: s.pass, timeout: timeoutMs })
+        .then((r) => resolve(r.ok
+          ? { ok: true, ip: '', ms: r.ms }
+          : { ok: false, error: r.error || 'socks 检测失败', ms: r.ms }))
+        .catch((e) => resolve({ ok: false, error: String(e.message || e) }));
+      return;
     }
     const started = Date.now();
     const req = http.request({

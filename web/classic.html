@@ -130,9 +130,28 @@
         <button class="act" onclick="CL.enrich()">补全资料</button>
         <button class="act" onclick="CL.exportExcel()">导出Excel</button>
         <button class="act" onclick="CL.importExcel()">导入Excel</button>
-        <button class="act" onclick="CL.dmSelected()">私信选中</button>
+        <button class="act" onclick="CL.genScript()">生成话术</button>`r`n        <button class="act" onclick="CL.dmSelected()">私信选中</button>
         <button class="act" onclick="CL.selectAll()">全选</button>
       </div>
+    </div>
+
+    <!-- 监控面板（点【引流】自动化操作区时显示） -->
+    <div class="watch-panel" id="watch-panel" style="display:none; padding:4px; border-bottom:1px solid #d0d0d0; background:#fafafa;">
+      <div style="display:flex; gap:3px; align-items:center; flex-wrap:wrap; margin-bottom:3px">
+        <select id="w-type" style="height:20px"><option value="user_new_works">博主新作品</option><option value="video_new_comments">视频新评论</option></select>
+        <input id="w-target" placeholder="sec_uid 或 视频链接/ID" style="flex:1; min-width:180px; height:20px; padding:1px 3px; border:1px solid #b8b8b8" />
+        <input id="w-note" placeholder="备注（如 三哥车问）" style="width:110px; height:20px; padding:1px 3px; border:1px solid #b8b8b8" />
+        <input id="w-interval" type="number" value="600" style="width:60px; height:20px; padding:1px 3px; border:1px solid #b8b8b8" title="检查间隔（秒）" />
+        <button class="act" onclick="CL.addWatch()">添加监控</button>
+        <button class="act" onclick="CL.loadWatches()">刷新</button>
+      </div>
+      <div style="max-height:180px; overflow:auto; background:#fff; border:1px solid #dcdcdc">
+        <table id="watch-tbl" style="width:100%; border-collapse:collapse; font-size:11px">
+          <thead><tr><th>#</th><th>类型</th><th>目标</th><th>备注</th><th>间隔</th><th>上次检查</th><th>命中</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div style="font-size:11px;color:#777;margin-top:2px">监控发现新作品/新评论时会入库并推送通知（需在「设置」里配好 Webhook）</div>
     </div>
 
     <div class="table-wrap">
