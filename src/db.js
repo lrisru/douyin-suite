@@ -1,4 +1,4 @@
-import path from 'node:path';
+﻿import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ensureDir, nowMs, resolveDataPath } from './util.js';
 
@@ -76,6 +76,12 @@ CREATE TABLE IF NOT EXISTS comments (
   user_name TEXT,
   user_uid TEXT,
   user_sec_uid TEXT DEFAULT '',
+  user_gender INTEGER DEFAULT 0,
+  user_city TEXT DEFAULT '',
+  user_signature TEXT DEFAULT '',
+  user_followers INTEGER DEFAULT 0,
+  user_following INTEGER DEFAULT 0,
+  user_douyin_id TEXT DEFAULT '',
   digg INTEGER DEFAULT 0,
   create_time INTEGER DEFAULT 0,
   raw TEXT,
@@ -218,6 +224,12 @@ export function initDb(config) {
     'ALTER TABLE accounts ADD COLUMN seed TEXT DEFAULT ""',
     'ALTER TABLE comments ADD COLUMN keyword TEXT DEFAULT ""',
     'ALTER TABLE comments ADD COLUMN user_sec_uid TEXT DEFAULT ""',
+    'ALTER TABLE comments ADD COLUMN user_gender INTEGER DEFAULT 0',
+    'ALTER TABLE comments ADD COLUMN user_city TEXT DEFAULT ""',
+    'ALTER TABLE comments ADD COLUMN user_signature TEXT DEFAULT ""',
+    'ALTER TABLE comments ADD COLUMN user_followers INTEGER DEFAULT 0',
+    'ALTER TABLE comments ADD COLUMN user_following INTEGER DEFAULT 0',
+    'ALTER TABLE comments ADD COLUMN user_douyin_id TEXT DEFAULT ""',
     'ALTER TABLE lives ADD COLUMN keyword TEXT DEFAULT ""',
   ]) {
     try { db.exec(sql); } catch { /* 已存在 */ }
@@ -382,14 +394,24 @@ export function upsertComment(row) {
       keyword = getDb().prepare('SELECT keyword FROM items WHERE aweme_id = ? LIMIT 1').get(row.aweme_id)?.keyword || '';
     } catch { /* ignore */ }
   }
-  const sql = `INSERT INTO comments (account_id, task_id, keyword, aweme_id, cid, text, user_name, user_uid, user_sec_uid, digg, create_time, raw, collected_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+  const sql = `INSERT INTO comments (account_id, task_id, keyword, aweme_id, cid, text, user_name, user_uid, user_sec_uid,
+      user_gender, user_city, user_signature, user_followers, user_following, user_douyin_id, digg, create_time, raw, collected_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(cid, account_id) DO UPDATE SET text=excluded.text, digg=excluded.digg,
       user_sec_uid=COALESCE(NULLIF(excluded.user_sec_uid,''), comments.user_sec_uid),
+      user_gender=COALESCE(NULLIF(excluded.user_gender,0), comments.user_gender),
+      user_city=COALESCE(NULLIF(excluded.user_city,''), comments.user_city),
+      user_signature=COALESCE(NULLIF(excluded.user_signature,''), comments.user_signature),
+      user_followers=COALESCE(NULLIF(excluded.user_followers,0), comments.user_followers),
+      user_following=COALESCE(NULLIF(excluded.user_following,0), comments.user_following),
+      user_douyin_id=COALESCE(NULLIF(excluded.user_douyin_id,''), comments.user_douyin_id),
       collected_at=excluded.collected_at, keyword=excluded.keyword`;
   getDb().prepare(sql).run(
     row.account_id ?? null, row.task_id ?? null, keyword, row.aweme_id ?? '', row.cid, row.text ?? '',
-    row.user_name ?? '', row.user_uid ?? '', row.user_sec_uid ?? '', row.digg ?? 0, row.create_time ?? 0,
+    row.user_name ?? '', row.user_uid ?? '', row.user_sec_uid ?? '',
+    row.user_gender ?? 0, row.user_city ?? '', row.user_signature ?? '',
+    row.user_followers ?? 0, row.user_following ?? 0, row.user_douyin_id ?? '',
+    row.digg ?? 0, row.create_time ?? 0,
     row.raw ? JSON.stringify(row.raw) : '', nowMs()
   );
 }

@@ -19,7 +19,7 @@
     <span>作品 <b id="s-items">0</b></span>
     <span>用户 <b id="s-users">0</b></span>
     <span>队列 <b id="s-queue">0</b></span>
-    <span class="lic" id="s-license">授权：未启用</span>
+    <span class="lic" id="s-license">授权：未启用</span> <a href="/classic.html" target="_blank" style="color:#4a9eff;margin-left:8px;text-decoration:none">经典界面</a>
   </div>
 </header>
 
@@ -300,6 +300,7 @@
       <button class="btn" onclick="App.loadData(0)">查询</button>
       <button class="btn ghost" onclick="App.exportData('xlsx')">导出 Excel</button>
       <button class="btn ghost" onclick="App.exportData('csv')">导出 CSV</button>
+      <button class="btn ghost" onclick="App.enrichComments()">补全评论者资料</button>
       <button class="btn" onclick="App.dmSelected()">私信选中用户</button>
       <button class="btn ghost" onclick="App.copySelected()">复制选中 sec_uid</button>
       <span class="grow"></span>

@@ -1,0 +1,11 @@
+﻿import { loadConfig } from "../src/util.js";
+import * as db from "../src/db.js";
+db.initDb(loadConfig(process.cwd()));
+const g = db.getDb();
+const total = g.prepare("SELECT COUNT(*) c FROM comments").get().c;
+const withCity = g.prepare("SELECT COUNT(*) c FROM comments WHERE user_city <> ''").get().c;
+const withGender = g.prepare("SELECT COUNT(*) c FROM comments WHERE user_gender > 0").get().c;
+const withFans = g.prepare("SELECT COUNT(*) c FROM comments WHERE user_followers > 0").get().c;
+console.log(`评论总数 ${total} | 有城市 ${withCity} | 有性别 ${withGender} | 有粉丝数 ${withFans}`);
+const sample = g.prepare("SELECT user_name, user_city, user_gender, user_followers FROM comments WHERE user_city <> '' LIMIT 8").all();
+console.log("有城市样例:", JSON.stringify(sample, null, 1));

@@ -18,6 +18,7 @@ import { fingerprintProfile } from './fingerprint.js';
 import { EXPORT_SCHEMAS, toCsv, toXlsx } from './export.js';
 import { checkProxy, checkAll, testProxy } from './proxy.js';
 import { checkIp } from './ip.js';
+import { enrichComments } from './enrich.js';
 import { licenseStatus, activate, machineCode } from './license.js';
 import { notifyTest } from './notify.js';
 import { events, logger, loadConfig, saveConfig, openInBrowser } from './util.js';
@@ -444,6 +445,43 @@ async function handleApi(req, res, url) {
       spawn(opener, [dir], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
     return sendJson(res, 200, { ok: true, data: dir });
+  }
+
+  /* 实时画面：把账号浏览器的当前页截图给前端（原版左侧内嵌浏览器效果） */
+  if (p === '/api/screen' && req.method === 'GET') {
+    const accs = listAccounts();
+    const acc = accs.find((a) => a.logged_in === 1) || accs[0];
+    if (!acc) return sendJson(res, 400, { ok: false, error: '没有可用账号' });
+    try {
+      const { cdp } = await host.page(acc);
+      const shot = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 70 });
+      const url = await cdp.evaluate('location.href').catch(() => '');
+      return sendJson(res, 200, { ok: true, data: { image: 'data:image/jpeg;base64,' + shot.data, url, at: Date.now() } });
+    } catch (e) {
+      return sendJson(res, 200, { ok: false, error: e.message });
+    }
+  }
+
+  /* 让浏览器跳转到指定地址（左侧地址栏用） */
+  if (p === '/api/navigate' && req.method === 'POST') {
+    const body = await readBody(req);
+    const accs = listAccounts();
+    const acc = accs.find((a) => a.logged_in === 1) || accs[0];
+    if (!acc || !body.url) return sendJson(res, 400, { ok: false, error: '参数不足' });
+    const { cdp } = await host.page(acc);
+    await cdp.navigate(body.url, { waitMs: 800 });
+    return sendJson(res, 200, { ok: true, data: { url: body.url } });
+  }
+
+  /* 批量补全评论者资料（性别/城市/简介/粉丝），原版靠这个做地区筛选 */
+  if (p === '/api/enrich' && req.method === 'POST') {
+    const body = await readBody(req);
+    const accs = listAccounts();
+    const acc = body.account_id ? getAccount(body.account_id) : (accs.find((a) => a.logged_in === 1) || accs[0] || null);
+    if (!acc) return sendJson(res, 400, { ok: false, error: '没有可用账号' });
+    const { cdp } = await host.page(acc);
+    const r = await enrichComments(cdp, { limit: Number(body.limit || 100), onlyMissing: body.onlyMissing !== false });
+    return sendJson(res, 200, { ok: true, data: r });
   }
 
   /* 出口 IP / 归属地（多源交叉校验，验证代理是否生效） */

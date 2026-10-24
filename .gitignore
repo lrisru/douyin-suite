@@ -40,3 +40,8 @@ test/exe-*.txt
 test/exe-res/
 test/exe-screen.png
 
+
+# B 站教程视频等大文件
+test/bili/
+test/*.png
+

@@ -548,6 +548,18 @@ const App = {
     return out;
   },
 
+  async enrichComments() {
+    if ($('#d-kind').value !== 'comments') return App.toast('先切到「评论」数据源', 'warn');
+    const n = prompt('补全多少个评论者的资料？（性别/城市/简介/粉丝，约 0.8 秒一个）', '50');
+    if (n === null) return;
+    App.toast('补全中，请稍候…', 'info', 8000);
+    try {
+      const { data } = await App.api('/api/enrich', { method: 'POST', body: { limit: Number(n) || 50 } });
+      App.toast(`补全完成：成功 ${data.ok}，失败 ${data.fail}`, 'ok', 6000);
+      await App.loadData(App.state.page.offset);
+    } catch (e) { App.toast(e.message, 'error'); }
+  },
+
   async dmSelected() {
     const picked = App.selectedSecUids();
     if (!picked.length) {
